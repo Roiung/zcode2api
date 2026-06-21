@@ -6,13 +6,14 @@ import sys
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from . import settings
 from . import logs
 from .captcha import captcha_manager
 from .quota import monitor
-from .routes import admin_api, gateway, pages
+from .routes import admin_api, gateway, openai_compat, pages
 
 # 修正 Windows 中文控制台可能出现的乱码
 for _stream in (sys.stdout, sys.stderr):
@@ -47,11 +48,21 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     app = FastAPI(title="zcode2api", version=settings.APP_VERSION, lifespan=lifespan)
 
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
+        expose_headers=["*"],
+    )
+
     app.mount("/static", StaticFiles(directory=str(settings.STATIC_DIR)), name="static")
 
     app.include_router(pages.router)
     app.include_router(admin_api.router)
     app.include_router(gateway.router)
+    app.include_router(openai_compat.router)
     return app
 
 
